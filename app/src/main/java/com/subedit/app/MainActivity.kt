@@ -1,3 +1,4 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.subedit.app
 
 import android.net.Uri
@@ -36,9 +37,11 @@ fun SubEditApp(activity: ComponentActivity) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var statusMsg by remember { mutableStateOf("Профиль не загружен") }
     var remotePath by remember { mutableStateOf(ShizukuHelper.CITY_PROFILE_PATH) }
-    var gameMode by remember { mutableIntStateOf(0) } // 0 = Subway City, 1 = Original Subway
+    var gameMode by remember { mutableIntStateOf(0) }
 
-    val openLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+    val openLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
         uri?.let {
             try {
                 val bytes = activity.contentResolver.openInputStream(it)?.readBytes() ?: return@let
@@ -52,7 +55,9 @@ fun SubEditApp(activity: ComponentActivity) {
         }
     }
 
-    val saveLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri: Uri? ->
+    val saveLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/octet-stream")
+    ) { uri: Uri? ->
         uri?.let {
             try {
                 val ed = editor ?: return@let
@@ -66,8 +71,10 @@ fun SubEditApp(activity: ComponentActivity) {
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
-        // Переключатель игры (City / Original Subway)
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
             FilterChip(
                 selected = gameMode == 0,
                 onClick = {
@@ -83,7 +90,7 @@ fun SubEditApp(activity: ComponentActivity) {
                     gameMode = 1
                     remotePath = "/sdcard/Android/data/com.kiloo.subwaysurf/files/profile/wallet.json"
                 },
-                label = { Text("Original Subway (Скоро)") }
+                label = { Text("Original Subway") }
             )
         }
 
@@ -95,7 +102,10 @@ fun SubEditApp(activity: ComponentActivity) {
             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
         )
 
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
             Button(
                 onClick = {
                     if (ShizukuHelper.hasPermission()) {
@@ -113,7 +123,9 @@ fun SubEditApp(activity: ComponentActivity) {
                     }
                 },
                 modifier = Modifier.weight(1f)
-            ) { Text("Shizuku: Загрузить") }
+            ) {
+                Text("Shizuku: Загрузить")
+            }
 
             Button(
                 onClick = {
@@ -131,11 +143,19 @@ fun SubEditApp(activity: ComponentActivity) {
                 },
                 enabled = editor != null,
                 modifier = Modifier.weight(1f)
-            ) { Text("Shizuku: Сохранить") }
+            ) {
+                Text("Shizuku: Сохранить")
+            }
         }
 
-        Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            OutlinedButton(onClick = { openLauncher.launch("*/*") }, modifier = Modifier.weight(1f)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            OutlinedButton(
+                onClick = { openLauncher.launch("*/*") },
+                modifier = Modifier.weight(1f)
+            ) {
                 Text("Открыть файл...")
             }
             OutlinedButton(
@@ -157,14 +177,21 @@ fun SubEditApp(activity: ComponentActivity) {
         val tabs = listOf("Персонажи", "Доски", "Кошелёк", "Статистика", "Покупки", "Сезон")
         ScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 0.dp) {
             tabs.forEachIndexed { idx, title ->
-                Tab(selected = selectedTab == idx, onClick = { selectedTab = idx }, text = { Text(title) })
+                Tab(
+                    selected = selectedTab == idx,
+                    onClick = { selectedTab = idx },
+                    text = { Text(title) }
+                )
             }
         }
 
         val currentEditor = editor
         if (currentEditor == null) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Загрузите профиль через Shizuku или выберите файл с телефона")
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Загрузите профиль через Shizuku или выберите файл")
             }
         } else {
             key(refreshTrigger) {
@@ -185,11 +212,20 @@ fun SubEditApp(activity: ComponentActivity) {
 fun SurfersTab(editor: ProfileEditor, onUpdate: () -> Unit) {
     val surfers = remember { editor.getSurfers() }
     Column(modifier = Modifier.fillMaxSize()) {
-        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { editor.unlockAllSurfers(true); onUpdate() }, modifier = Modifier.weight(1f)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Button(
+                onClick = { editor.unlockAllSurfers(true); onUpdate() },
+                modifier = Modifier.weight(1f)
+            ) {
                 Text("Открыть всех + скины")
             }
-            OutlinedButton(onClick = { editor.unlockAllSurfers(false); onUpdate() }, modifier = Modifier.weight(1f)) {
+            OutlinedButton(
+                onClick = { editor.unlockAllSurfers(false); onUpdate() },
+                modifier = Modifier.weight(1f)
+            ) {
                 Text("Закрыть всех")
             }
         }
@@ -205,12 +241,19 @@ fun SurfersTab(editor: ProfileEditor, onUpdate: () -> Unit) {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(10.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                            Checkbox(checked = unlocked, onCheckedChange = {
-                                unlocked = it
-                                surfer.put("isUnlocked", it)
-                                surfer.put("wasSeen", it)
-                            })
+                            Text(
+                                text = name,
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Checkbox(
+                                checked = unlocked,
+                                onCheckedChange = {
+                                    unlocked = it
+                                    surfer.put("isUnlocked", it)
+                                    surfer.put("wasSeen", it)
+                                }
+                            )
                             Text("Открыт")
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -218,7 +261,9 @@ fun SurfersTab(editor: ProfileEditor, onUpdate: () -> Unit) {
                                 value = levelStr,
                                 onValueChange = {
                                     levelStr = it
-                                    it.toIntOrNull()?.coerceIn(1, 20)?.let { lvl -> surfer.put("level", lvl) }
+                                    it.toIntOrNull()?.coerceIn(1, 20)?.let { lvl ->
+                                        surfer.put("level", lvl)
+                                    }
                                 },
                                 label = { Text("Уровень (1-20)") },
                                 modifier = Modifier.weight(1f),
@@ -228,7 +273,9 @@ fun SurfersTab(editor: ProfileEditor, onUpdate: () -> Unit) {
                                 value = scoreStr,
                                 onValueChange = {
                                     scoreStr = it
-                                    it.toIntOrNull()?.let { hs -> surfer.put("highScore", hs) }
+                                    it.toIntOrNull()?.let { hs ->
+                                        surfer.put("highScore", hs)
+                                    }
                                 },
                                 label = { Text("Рекорд") },
                                 modifier = Modifier.weight(1f),
@@ -236,14 +283,21 @@ fun SurfersTab(editor: ProfileEditor, onUpdate: () -> Unit) {
                             )
                         }
                         if (surferSkins.isNotEmpty()) {
-                            Text("Скины:", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 6.dp))
+                            Text(
+                                text = "Скины:",
+                                style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.padding(top = 6.dp)
+                            )
                             surferSkins.forEach { skin ->
                                 var skinUnl by remember { mutableStateOf(editor.isSkinUnlocked(skin.id)) }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Checkbox(checked = skinUnl, onCheckedChange = {
-                                        skinUnl = it
-                                        editor.updateSkin(skin.id, it)
-                                    })
+                                    Checkbox(
+                                        checked = skinUnl,
+                                        onCheckedChange = {
+                                            skinUnl = it
+                                            editor.updateSkin(skin.id, it)
+                                        }
+                                    )
                                     Text(skin.name, style = MaterialTheme.typography.bodySmall)
                                 }
                             }
@@ -259,11 +313,20 @@ fun SurfersTab(editor: ProfileEditor, onUpdate: () -> Unit) {
 fun BoardsTab(editor: ProfileEditor, onUpdate: () -> Unit) {
     val boards = remember { editor.getBoards() }
     Column(modifier = Modifier.fillMaxSize()) {
-        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { editor.unlockAllBoards(true); onUpdate() }, modifier = Modifier.weight(1f)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Button(
+                onClick = { editor.unlockAllBoards(true); onUpdate() },
+                modifier = Modifier.weight(1f)
+            ) {
                 Text("Открыть все доски")
             }
-            OutlinedButton(onClick = { editor.unlockAllBoards(false); onUpdate() }, modifier = Modifier.weight(1f)) {
+            OutlinedButton(
+                onClick = { editor.unlockAllBoards(false); onUpdate() },
+                modifier = Modifier.weight(1f)
+            ) {
                 Text("Закрыть все доски")
             }
         }
@@ -277,15 +340,21 @@ fun BoardsTab(editor: ProfileEditor, onUpdate: () -> Unit) {
                 var levelStr by remember { mutableStateOf(board.optInt("level", 1).toString()) }
 
                 Card(modifier = Modifier.fillMaxWidth()) {
-                    Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(title, style = MaterialTheme.typography.titleSmall)
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(checked = unlocked, onCheckedChange = {
-                                    unlocked = it
-                                    board.put("isUnlocked", it)
-                                    board.put("wasSeen", it)
-                                })
+                                Checkbox(
+                                    checked = unlocked,
+                                    onCheckedChange = {
+                                        unlocked = it
+                                        board.put("isUnlocked", it)
+                                        board.put("wasSeen", it)
+                                    }
+                                )
                                 Text("Открыта")
                             }
                         }
@@ -293,7 +362,9 @@ fun BoardsTab(editor: ProfileEditor, onUpdate: () -> Unit) {
                             value = levelStr,
                             onValueChange = {
                                 levelStr = it
-                                it.toIntOrNull()?.coerceIn(1, 20)?.let { lvl -> board.put("level", lvl) }
+                                it.toIntOrNull()?.coerceIn(1, 20)?.let { lvl ->
+                                    board.put("level", lvl)
+                                }
                             },
                             label = { Text("Ур. (1-20)") },
                             modifier = Modifier.width(110.dp),
@@ -316,15 +387,22 @@ fun WalletTab(editor: ProfileEditor, onUpdate: () -> Unit) {
         "surfer_tokens" to "Токены персонажей",
         "tickets" to "Билеты (Tickets)"
     )
-    LazyColumn(modifier = Modifier.fillMaxSize().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(top = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
         item {
             Button(
                 onClick = {
-                    GameData.walletTags.values.forEach { tag -> editor.setWalletItem(tag, 9999999) }
+                    GameData.walletTags.values.forEach { tag ->
+                        editor.setWalletItem(tag, 9999999)
+                    }
                     onUpdate()
                 },
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("Выдать по 9 999 999 всех ресурсов") }
+            ) {
+                Text("Выдать по 9 999 999 всех ресурсов")
+            }
         }
         items(GameData.walletTags.entries.toList()) { (key, tag) ->
             var valStr by remember { mutableStateOf(editor.getWalletItem(tag).toString()) }
@@ -344,7 +422,10 @@ fun WalletTab(editor: ProfileEditor, onUpdate: () -> Unit) {
 
 @Composable
 fun StatsTab(editor: ProfileEditor) {
-    LazyColumn(modifier = Modifier.fillMaxSize().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(top = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
         items(GameData.statKeys) { statKey ->
             var valStr by remember { mutableStateOf(editor.getStat(statKey).toString()) }
             OutlinedTextField(
@@ -375,15 +456,28 @@ fun PurchasesTab(editor: ProfileEditor, onUpdate: () -> Unit) {
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
-        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Button(onClick = { editor.addPurchase(customId); onUpdate() }, modifier = Modifier.weight(1f)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Button(
+                onClick = { editor.addPurchase(customId); onUpdate() },
+                modifier = Modifier.weight(1f)
+            ) {
                 Text("Добавить ID")
             }
-            Button(onClick = { editor.addPurchase("shop.currency.keypack6"); onUpdate() }, modifier = Modifier.weight(1f)) {
+            Button(
+                onClick = { editor.addPurchase("shop.currency.keypack6"); onUpdate() },
+                modifier = Modifier.weight(1f)
+            ) {
                 Text("Убрать рекламу")
             }
         }
-        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             OutlinedTextField(
                 value = trailNum,
                 onValueChange = { trailNum = it },
@@ -391,47 +485,9 @@ fun PurchasesTab(editor: ProfileEditor, onUpdate: () -> Unit) {
                 modifier = Modifier.width(130.dp),
                 singleLine = true
             )
-            Button(onClick = {
-                val n = trailNum.toIntOrNull()
-                if (n != null && n in 1..999) {
-                    editor.addPurchase("districttrial.premiumladder.%03d".format(n))
-                    onUpdate()
-                }
-            }, modifier = Modifier.weight(1f)) {
-                Text("Добавить бонус-трек")
-            }
-        }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Button(onClick = {
-                GameData.ALL_PURCHASE_IDS.forEach { editor.addPurchase(it) }
-                onUpdate()
-            }, modifier = Modifier.weight(1f)) { Text("Добавить все") }
-            OutlinedButton(onClick = { editor.clearPurchases(); onUpdate() }, modifier = Modifier.weight(1f)) {
-                Text("Очистить все")
-            }
-        }
-        Text("История покупок (${entries.size}):", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(vertical = 6.dp))
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            items(entries) { (pid, date) ->
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(pid, style = MaterialTheme.typography.bodyMedium)
-                            Text(date, style = MaterialTheme.typography.bodySmall)
-                        }
-                        TextButton(onClick = { editor.removePurchaseProduct(pid); onUpdate() }) {
-                            Text("Удалить")
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun SeasonTab(editor: ProfileEditor) {
-    var purchased by remember { mutableStateOf(editor.isSeasonPassPurchased()) }
-    var pointsStr by remember { mutableStateOf(editor.getSeasonPassPoints().toString()) }
-
-    Column(modifier = Modifier.fillMaxSize().padding(top = 12.d
+            Button(
+                onClick = {
+                    val n = trailNum.toIntOrNull()
+                    if (n != null && n in 1..999) {
+                        val formatted = n.toString().padStart(3, '0')
+                        editor.addPurchase("districttrial.premiumladder.$fo
