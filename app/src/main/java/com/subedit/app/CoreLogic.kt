@@ -2,7 +2,7 @@ package com.subedit.app
 
 import android.content.Context
 import android.content.pm.PackageManager
-import dev.rikka.shizuku.Shizuku
+import rikka.shizuku.Shizuku
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -271,13 +271,14 @@ object ShizukuHelper {
     }
 
     private fun execShizuku(cmd: String): Int {
-        val method = Shizuku::class.java.getDeclaredMethod(
+        val clazz = Class.forName("rikka.shizuku.Shizuku")
+        val method = clazz.getDeclaredMethod(
             "newProcess",
             Array<String>::class.java,
             Array<String>::class.java,
             String::class.java
         )
-        method.isAccessible = true
+        method.setAccessible(true)
         val process = method.invoke(null, arrayOf("sh", "-c", cmd), null, null) as Process
         return process.waitFor()
     }
@@ -287,7 +288,7 @@ object ShizukuHelper {
         if (tempFile.exists()) tempFile.delete()
         val code = execShizuku("cp \"$remotePath\" \"${tempFile.absolutePath}\" && chmod 666 \"${tempFile.absolutePath}\"")
         if (code != 0 || !tempFile.exists()) {
-            throw IllegalStateException("Не удалось прочитать $remotePath (код $code). Проверь путь и доступ Shizuku.")
+            throw IllegalStateException("Не удалось прочитать $remotePath (код $code)")
         }
         return tempFile.readBytes()
     }
