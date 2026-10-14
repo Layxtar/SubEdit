@@ -22,186 +22,117 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    SubEditApp(this)
-                }
+                Surface(Modifier.fillMaxSize()) { SubEditApp(this) }
             }
         }
     }
 }
 
 @Composable
-fun SubEditApp(activity: ComponentActivity) {
-    var editor by remember { mutableStateOf<ProfileEditor?>(null) }
-    var refreshTrigger by remember { mutableIntStateOf(0) }
-    var selectedTab by remember { mutableIntStateOf(0) }
-    var statusMsg by remember { mutableStateOf("Профиль не загружен") }
-    var remotePath by remember { mutableStateOf(ShizukuHelper.CITY_PROFILE_PATH) }
-    var gameMode by remember { mutableIntStateOf(0) }
+fun SubEditApp(act: ComponentActivity) {
+    var ed by remember { mutableStateOf<ProfileEditor?>(null) }
+    var trig by remember { mutableIntStateOf(0) }
+    var tab by remember { mutableIntStateOf(0) }
+    var msg by remember { mutableStateOf("Профиль не загружен") }
+    var path by remember { mutableStateOf(ShizukuHelper.CITY_PROFILE_PATH) }
+    var mode by remember { mutableIntStateOf(0) }
 
-    val openLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
+    val openDoc = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { u: Uri? ->
+        u?.let {
             try {
-                val bytes = activity.contentResolver.openInputStream(it)?.readBytes() ?: return@let
-                val payload = ProfileCrypto.decryptProfile(bytes)
-                editor = ProfileEditor(payload.iv, payload.key, payload.rootData)
-                refreshTrigger++
-                statusMsg = "Файл открыт через проводник"
-            } catch (e: Exception) {
-                statusMsg = "Ошибка: ${e.message}"
-            }
+                val b = act.contentResolver.openInputStream(it)?.readBytes() ?: return@let
+                val p = ProfileCrypto.decryptProfile(b)
+                ed = ProfileEditor(p.iv, p.key, p.rootData)
+                trig++
+                msg = "Файл открыт"
+            } catch (e: Exception) { msg = "Ошибка: ${e.message}" }
         }
     }
 
-    val saveLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/octet-stream")
-    ) { uri: Uri? ->
-        uri?.let {
+    val saveDoc = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { u: Uri? ->
+        u?.let {
             try {
-                val ed = editor ?: return@let
-                val outBytes = ProfileCrypto.encryptProfile(ed.iv, ed.key, ed.buildRootData())
-                activity.contentResolver.openOutputStream(it)?.use { os -> os.write(outBytes) }
-                statusMsg = "Файл успешно сохранён!"
-            } catch (e: Exception) {
-                statusMsg = "Ошибка сохранения: ${e.message}"
-            }
+                val cur = ed ?: return@let
+                val out = ProfileCrypto.encryptProfile(cur.iv, cur.key, cur.buildRootData())
+                act.contentResolver.openOutputStream(it)?.use { s -> s.write(out) }
+                msg = "Файл сохранён!"
+            } catch (e: Exception) { msg = "Ошибка: ${e.message}" }
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
+    Column(Modifier.fillMaxSize().padding(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             FilterChip(
-                selected = gameMode == 0,
-                onClick = {
-                    gameMode = 0
-                    remotePath = "/sdcard/Android/data/com.sybogames.subway.surfers.city/files/profile"
-                },
+                selected = mode == 0,
+                onClick = { mode = 0; path = ShizukuHelper.CITY_PROFILE_PATH },
                 label = { Text("Subway City") },
                 modifier = Modifier.padding(end = 8.dp)
             )
             FilterChip(
-                selected = gameMode == 1,
-                onClick = {
-                    gameMode = 1
-                    remotePath = "/sdcard/Android/data/com.kiloo.subwaysurf/files/profile/wallet.json"
-                },
+                selected = mode == 1,
+                onClick = { mode = 1; path = "/sdcard/Android/data/com.kiloo.subwaysurf/files/profile/wallet.json" },
                 label = { Text("Original Subway") }
             )
         }
 
         OutlinedTextField(
-            value = remotePath,
-            onValueChange = { remotePath = it },
-            label = { Text("Путь Shizuku к файлу профиля") },
+            value = path,
+            onValueChange = { path = it },
+            label = { Text("Путь Shizuku") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
         )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Button(
-                onClick = {
-                    if (ShizukuHelper.hasPermission()) {
-                        try {
-                            val bytes = ShizukuHelper.readFileViaShizuku(activity, remotePath)
-                            val payload = ProfileCrypto.decryptProfile(bytes)
-                            editor = ProfileEditor(payload.iv, payload.key, payload.rootData)
-                            refreshTrigger++
-                            statusMsg = "Загружено через Shizuku!"
-                        } catch (e: Exception) {
-                            statusMsg = e.message ?: "Ошибка Shizuku"
-                        }
-                    } else {
-                        statusMsg = "Запустите Shizuku и выдайте права"
-                    }
-                },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Shizuku: Загрузить")
-            }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Button(onClick = {
+                if (ShizukuHelper.hasPermission()) {
+                    try {
+                        val b = ShizukuHelper.readFileViaShizuku(act, path)
+                        val p = ProfileCrypto.decryptProfile(b)
+                        ed = ProfileEditor(p.iv, p.key, p.rootData)
+                        trig++
+                        msg = "Загружено через Shizuku!"
+                    } catch (e: Exception) { msg = e.message ?: "Ошибка" }
+                } else msg = "Выдайте права в Shizuku"
+            }, Modifier.weight(1f)) { Text("Shizuku: Взять") }
 
-            Button(
-                onClick = {
-                    val ed = editor ?: return@Button
-                    if (ShizukuHelper.hasPermission()) {
-                        try {
-                            val bytes = ProfileCrypto.encryptProfile(ed.iv, ed.key, ed.buildRootData())
-                            ShizukuHelper.writeFileViaShizuku(activity, remotePath, bytes)
-                            statusMsg = "Сохранено в игру через Shizuku!"
-                            Toast.makeText(activity, statusMsg, Toast.LENGTH_SHORT).show()
-                        } catch (e: Exception) {
-                            statusMsg = e.message ?: "Ошибка записи"
-                        }
-                    }
-                },
-                enabled = editor != null,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Shizuku: Сохранить")
-            }
+            Button(onClick = {
+                val cur = ed ?: return@Button
+                if (ShizukuHelper.hasPermission()) {
+                    try {
+                        val b = ProfileCrypto.encryptProfile(cur.iv, cur.key, cur.buildRootData())
+                        ShizukuHelper.writeFileViaShizuku(act, path, b)
+                        msg = "Сохранено в игру!"
+                        Toast.makeText(act, msg, Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) { msg = e.message ?: "Ошибка" }
+                }
+            }, enabled = ed != null, modifier = Modifier.weight(1f)) { Text("Shizuku: Залить") }
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            OutlinedButton(
-                onClick = { openLauncher.launch("*/*") },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Открыть файл...")
-            }
-            OutlinedButton(
-                onClick = { saveLauncher.launch("profile") },
-                enabled = editor != null,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Скачать файл...")
-            }
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            OutlinedButton(onClick = { openDoc.launch("*/*") }, Modifier.weight(1f)) { Text("Открыть файл") }
+            OutlinedButton(onClick = { saveDoc.launch("profile") }, enabled = ed != null, modifier = Modifier.weight(1f)) { Text("Скачать файл") }
         }
 
-        Text(
-            text = statusMsg,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(vertical = 4.dp)
-        )
+        Text(msg, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(vertical = 4.dp))
 
-        val tabs = listOf("Персонажи", "Доски", "Кошелёк", "Статистика", "Покупки", "Сезон")
-        ScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 0.dp) {
-            tabs.forEachIndexed { idx, title ->
-                Tab(
-                    selected = selectedTab == idx,
-                    onClick = { selectedTab = idx },
-                    text = { Text(title) }
-                )
-            }
+        val tabs = listOf("Персонажи", "Доски", "Кошелёк", "Статы", "Покупки", "Сезон")
+        ScrollableTabRow(selectedTabIndex = tab, edgePadding = 0.dp) {
+            tabs.forEachIndexed { i, t -> Tab(selected = tab == i, onClick = { tab = i }, text = { Text(t) }) }
         }
 
-        val currentEditor = editor
-        if (currentEditor == null) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("Загрузите профиль через Shizuku или выберите файл")
-            }
+        val cur = ed
+        if (cur == null) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Загрузите профиль") }
         } else {
-            key(refreshTrigger) {
-                when (selectedTab) {
-                    0 -> SurfersTab(currentEditor) { refreshTrigger++ }
-                    1 -> BoardsTab(currentEditor) { refreshTrigger++ }
-                    2 -> WalletTab(currentEditor) { refreshTrigger++ }
-                    3 -> StatsTab(currentEditor)
-                    4 -> PurchasesTab(currentEditor) { refreshTrigger++ }
-                    5 -> SeasonTab(currentEditor)
+            key(trig) {
+                when (tab) {
+                    0 -> SurfersTab(cur) { trig++ }
+                    1 -> BoardsTab(cur) { trig++ }
+                    2 -> WalletTab(cur) { trig++ }
+                    3 -> StatsTab(cur)
+                    4 -> PurchasesTab(cur) { trig++ }
+                    5 -> SeasonTab(cur)
                 }
             }
         }
@@ -209,97 +140,50 @@ fun SubEditApp(activity: ComponentActivity) {
 }
 
 @Composable
-fun SurfersTab(editor: ProfileEditor, onUpdate: () -> Unit) {
-    val surfers = remember { editor.getSurfers() }
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                onClick = { editor.unlockAllSurfers(true); onUpdate() },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Открыть всех + скины")
-            }
-            OutlinedButton(
-                onClick = { editor.unlockAllSurfers(false); onUpdate() },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Закрыть всех")
-            }
+fun SurfersTab(ed: ProfileEditor, up: () -> Unit) {
+    val list = remember { ed.getSurfers() }
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { ed.unlockAllSurfers(true); up() }, Modifier.weight(1f)) { Text("Открыть всех") }
+            OutlinedButton(onClick = { ed.unlockAllSurfers(false); up() }, Modifier.weight(1f)) { Text("Закрыть всех") }
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(surfers) { surfer ->
-                val id = surfer.optInt("id")
+            items(list) { s ->
+                val id = s.optInt("id")
                 val name = GameData.surferNames[id] ?: id.toString()
-                var unlocked by remember { mutableStateOf(surfer.optBoolean("isUnlocked", false)) }
-                var levelStr by remember { mutableStateOf(surfer.optInt("level", 1).toString()) }
-                var scoreStr by remember { mutableStateOf(surfer.optInt("highScore", 0).toString()) }
-                val surferSkins = remember(id) { GameData.skins.filter { it.ownerId == id } }
+                var unl by remember { mutableStateOf(s.optBoolean("isUnlocked", false)) }
+                var lvl by remember { mutableStateOf(s.optInt("level", 1).toString()) }
+                var hs by remember { mutableStateOf(s.optInt("highScore", 0).toString()) }
+                val skins = remember(id) { GameData.skins.filter { it.ownerId == id } }
 
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(10.dp)) {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(10.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = name,
-                                style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Checkbox(
-                                checked = unlocked,
-                                onCheckedChange = {
-                                    unlocked = it
-                                    surfer.put("isUnlocked", it)
-                                    surfer.put("wasSeen", it)
-                                }
-                            )
+                            Text(name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                            Checkbox(checked = unl, onCheckedChange = { unl = it; s.put("isUnlocked", it); s.put("wasSeen", it) })
                             Text("Открыт")
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedTextField(
-                                value = levelStr,
-                                onValueChange = {
-                                    levelStr = it
-                                    it.toIntOrNull()?.coerceIn(1, 20)?.let { lvl ->
-                                        surfer.put("level", lvl)
-                                    }
-                                },
-                                label = { Text("Уровень (1-20)") },
+                                value = lvl,
+                                onValueChange = { lvl = it; it.toIntOrNull()?.coerceIn(1, 20)?.let { v -> s.put("level", v) } },
+                                label = { Text("Уровень") },
                                 modifier = Modifier.weight(1f),
                                 singleLine = true
                             )
                             OutlinedTextField(
-                                value = scoreStr,
-                                onValueChange = {
-                                    scoreStr = it
-                                    it.toIntOrNull()?.let { hs ->
-                                        surfer.put("highScore", hs)
-                                    }
-                                },
+                                value = hs,
+                                onValueChange = { hs = it; it.toIntOrNull()?.let { v -> s.put("highScore", v) } },
                                 label = { Text("Рекорд") },
                                 modifier = Modifier.weight(1f),
                                 singleLine = true
                             )
                         }
-                        if (surferSkins.isNotEmpty()) {
-                            Text(
-                                text = "Скины:",
-                                style = MaterialTheme.typography.labelMedium,
-                                modifier = Modifier.padding(top = 6.dp)
-                            )
-                            surferSkins.forEach { skin ->
-                                var skinUnl by remember { mutableStateOf(editor.isSkinUnlocked(skin.id)) }
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Checkbox(
-                                        checked = skinUnl,
-                                        onCheckedChange = {
-                                            skinUnl = it
-                                            editor.updateSkin(skin.id, it)
-                                        }
-                                    )
-                                    Text(skin.name, style = MaterialTheme.typography.bodySmall)
-                                }
+                        skins.forEach { sk ->
+                            var skUnl by remember { mutableStateOf(ed.isSkinUnlocked(sk.id)) }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(checked = skUnl, onCheckedChange = { skUnl = it; ed.updateSkin(sk.id, it) })
+                                Text(sk.name, style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     }
@@ -310,64 +194,36 @@ fun SurfersTab(editor: ProfileEditor, onUpdate: () -> Unit) {
 }
 
 @Composable
-fun BoardsTab(editor: ProfileEditor, onUpdate: () -> Unit) {
-    val boards = remember { editor.getBoards() }
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                onClick = { editor.unlockAllBoards(true); onUpdate() },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Открыть все доски")
-            }
-            OutlinedButton(
-                onClick = { editor.unlockAllBoards(false); onUpdate() },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Закрыть все доски")
-            }
+fun BoardsTab(ed: ProfileEditor, up: () -> Unit) {
+    val list = remember { ed.getBoards() }
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { ed.unlockAllBoards(true); up() }, Modifier.weight(1f)) { Text("Открыть доски") }
+            OutlinedButton(onClick = { ed.unlockAllBoards(false); up() }, Modifier.weight(1f)) { Text("Закрыть доски") }
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(boards) { board ->
-                val bid = board.optInt("id")
-                val bName = GameData.boardNames[bid] ?: bid.toString()
-                val ownerName = GameData.boardOwner[bid]?.let { GameData.surferNames[it] }
-                val title = if (ownerName != null) "$bName ($ownerName)" else bName
-                var unlocked by remember { mutableStateOf(board.optBoolean("isUnlocked", false)) }
-                var levelStr by remember { mutableStateOf(board.optInt("level", 1).toString()) }
+            items(list) { b ->
+                val id = b.optInt("id")
+                val bName = GameData.boardNames[id] ?: id.toString()
+                val owner = GameData.boardOwner[id]?.let { GameData.surferNames[it] }
+                val title = if (owner != null) "$bName ($owner)" else bName
+                var unl by remember { mutableStateOf(b.optBoolean("isUnlocked", false)) }
+                var lvl by remember { mutableStateOf(b.optInt("level", 1).toString()) }
 
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.padding(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
+                Card(Modifier.fillMaxWidth()) {
+                    Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
                             Text(title, style = MaterialTheme.typography.titleSmall)
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(
-                                    checked = unlocked,
-                                    onCheckedChange = {
-                                        unlocked = it
-                                        board.put("isUnlocked", it)
-                                        board.put("wasSeen", it)
-                                    }
-                                )
+                                Checkbox(checked = unl, onCheckedChange = { unl = it; b.put("isUnlocked", it); b.put("wasSeen", it) })
                                 Text("Открыта")
                             }
                         }
                         OutlinedTextField(
-                            value = levelStr,
-                            onValueChange = {
-                                levelStr = it
-                                it.toIntOrNull()?.coerceIn(1, 20)?.let { lvl ->
-                                    board.put("level", lvl)
-                                }
-                            },
-                            label = { Text("Ур. (1-20)") },
-                            modifier = Modifier.width(110.dp),
+                            value = lvl,
+                            onValueChange = { lvl = it; it.toIntOrNull()?.coerceIn(1, 20)?.let { v -> b.put("level", v) } },
+                            label = { Text("Ур.") },
+                            modifier = Modifier.width(100.dp),
                             singleLine = true
                         )
                     }
@@ -378,41 +234,19 @@ fun BoardsTab(editor: ProfileEditor, onUpdate: () -> Unit) {
 }
 
 @Composable
-fun WalletTab(editor: ProfileEditor, onUpdate: () -> Unit) {
-    val labels = mapOf(
-        "coins" to "Монеты (Coins)",
-        "keys" to "Ключи (Keys)",
-        "revives" to "Воскрешения (Revives)",
-        "board_tokens" to "Токены досок",
-        "surfer_tokens" to "Токены персонажей",
-        "tickets" to "Билеты (Tickets)"
-    )
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(top = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
+fun WalletTab(ed: ProfileEditor, up: () -> Unit) {
+    LazyColumn(Modifier.fillMaxSize().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
-            Button(
-                onClick = {
-                    GameData.walletTags.values.forEach { tag ->
-                        editor.setWalletItem(tag, 9999999)
-                    }
-                    onUpdate()
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Выдать по 9 999 999 всех ресурсов")
+            Button(onClick = { GameData.walletTags.values.forEach { ed.setWalletItem(it, 9999999) }; up() }, Modifier.fillMaxWidth()) {
+                Text("Выдать по 9 999 999 всего")
             }
         }
-        items(GameData.walletTags.entries.toList()) { (key, tag) ->
-            var valStr by remember { mutableStateOf(editor.getWalletItem(tag).toString()) }
+        items(GameData.walletTags.entries.toList()) { (k, tag) ->
+            var vStr by remember { mutableStateOf(ed.getWalletItem(tag).toString()) }
             OutlinedTextField(
-                value = valStr,
-                onValueChange = {
-                    valStr = it
-                    it.toIntOrNull()?.let { v -> editor.setWalletItem(tag, v) }
-                },
-                label = { Text(labels[key] ?: key) },
+                value = vStr,
+                onValueChange = { vStr = it; it.toIntOrNull()?.let { v -> ed.setWalletItem(tag, v) } },
+                label = { Text(k) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -421,20 +255,14 @@ fun WalletTab(editor: ProfileEditor, onUpdate: () -> Unit) {
 }
 
 @Composable
-fun StatsTab(editor: ProfileEditor) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(top = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(GameData.statKeys) { statKey ->
-            var valStr by remember { mutableStateOf(editor.getStat(statKey).toString()) }
+fun StatsTab(ed: ProfileEditor) {
+    LazyColumn(Modifier.fillMaxSize().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(GameData.statKeys) { k ->
+            var vStr by remember { mutableStateOf(ed.getStat(k).toString()) }
             OutlinedTextField(
-                value = valStr,
-                onValueChange = {
-                    valStr = it
-                    it.toIntOrNull()?.let { v -> editor.setStat(statKey, v) }
-                },
-                label = { Text(statKey) },
+                value = vStr,
+                onValueChange = { vStr = it; it.toIntOrNull()?.let { v -> ed.setStat(k, v) } },
+                label = { Text(k) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -443,51 +271,64 @@ fun StatsTab(editor: ProfileEditor) {
 }
 
 @Composable
-fun PurchasesTab(editor: ProfileEditor, onUpdate: () -> Unit) {
-    var customId by remember { mutableStateOf(GameData.ALL_PURCHASE_IDS.first()) }
-    var trailNum by remember { mutableStateOf("1") }
-    val entries = remember { editor.getPurchaseEntries() }
+fun PurchasesTab(ed: ProfileEditor, up: () -> Unit) {
+    var cid by remember { mutableStateOf(GameData.ALL_PURCHASE_IDS.first()) }
+    var trNum by remember { mutableStateOf("1") }
+    val list = remember { ed.getPurchaseEntries() }
 
-    Column(modifier = Modifier.fillMaxSize().padding(top = 6.dp)) {
+    Column(Modifier.fillMaxSize().padding(top = 6.dp)) {
+        OutlinedTextField(value = cid, onValueChange = { cid = it }, label = { Text("ID покупки") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Button(onClick = { ed.addPurchase(cid); up() }, Modifier.weight(1f)) { Text("Добавить ID") }
+            Button(onClick = { ed.addPurchase("shop.currency.keypack6"); up() }, Modifier.weight(1f)) { Text("Без рекламы") }
+        }
+        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(value = trNum, onValueChange = { trNum = it }, label = { Text("Трек 1-999") }, modifier = Modifier.width(120.dp), singleLine = true)
+            Button(onClick = {
+                val n = trNum.toIntOrNull()
+                if (n != null && n in 1..999) {
+                    val numStr = n.toString().padStart(3, '0')
+                    ed.addPurchase("districttrial.premiumladder." + numStr)
+                    up()
+                }
+            }, Modifier.weight(1f)) { Text("Бонус-трек") }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Button(onClick = { GameData.ALL_PURCHASE_IDS.forEach { ed.addPurchase(it) }; up() }, Modifier.weight(1f)) { Text("Добавить все") }
+            OutlinedButton(onClick = { ed.clearPurchases(); up() }, Modifier.weight(1f)) { Text("Очистить") }
+        }
+        LazyColumn(Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            items(list) { (pid, dt) ->
+                Card(Modifier.fillMaxWidth()) {
+                    Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(pid, style = MaterialTheme.typography.bodyMedium)
+                            Text(dt, style = MaterialTheme.typography.bodySmall)
+                        }
+                        TextButton(onClick = { ed.removePurchaseProduct(pid); up() }) { Text("X") }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SeasonTab(ed: ProfileEditor) {
+    var bought by remember { mutableStateOf(ed.isSeasonPassPurchased()) }
+    var pts by remember { mutableStateOf(ed.getSeasonPassPoints().toString()) }
+    Column(Modifier.fillMaxSize().padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Switch(checked = bought, onCheckedChange = { bought = it; ed.setSeasonPass(it, pts.toIntOrNull() ?: 0) })
+            Spacer(Modifier.width(12.dp))
+            Text("Сезонный пропуск куплен")
+        }
         OutlinedTextField(
-            value = customId,
-            onValueChange = { customId = it },
-            label = { Text("ID покупки") },
+            value = pts,
+            onValueChange = { pts = it; ed.setSeasonPass(bought, it.toIntOrNull() ?: 0) },
+            label = { Text("Очки сезона") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Button(
-                onClick = { editor.addPurchase(customId); onUpdate() },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Добавить ID")
-            }
-            Button(
-                onClick = { editor.addPurchase("shop.currency.keypack6"); onUpdate() },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Убрать рекламу")
-            }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedTextField(
-                value = trailNum,
-                onValueChange = { trailNum = it },
-                label = { Text("Трек (1-999)") },
-                modifier = Modifier.width(130.dp),
-                singleLine = true
-            )
-            Button(
-                onClick = {
-                    val n = trailNum.toIntOrNull()
-                    if (n != null && n in 1..999) {
-                        val formatted = n.toString().padStart(3, '0')
-                        editor.addPurchase("districttrial.premiumladder.$fo
+    }
+}
